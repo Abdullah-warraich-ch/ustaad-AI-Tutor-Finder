@@ -7,7 +7,7 @@ import Button from "@/components/Button";
 
 const navLinks = [
   { name: "Home", href: "/" },
-  { name: "Courses", href: "#" },
+  { name: "AI Matchmaker", href: "/ai" },
   { name: "Tutors", href: "#" },
   { name: "About Us", href: "#" },
 ];
@@ -92,34 +92,18 @@ export default function Navbar() {
       {isOpen && (
         <div className="md:hidden mt-2 max-w-5xl mx-auto bg-white/95 backdrop-blur-lg border border-color3/10 rounded-2xl p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col gap-4">
-            <Link 
-              href="/" 
-              onClick={() => setIsOpen(false)}
-              className="text-base font-semibold text-color3 hover:text-color4 transition-colors py-1 border-b border-color3/5"
-            >
-              Home
-            </Link>
-            <Link 
-              href="#" 
-              onClick={() => setIsOpen(false)}
-              className="text-base font-semibold text-color3 hover:text-color4 transition-colors py-1 border-b border-color3/5"
-            >
-              Courses
-            </Link>
-            <Link 
-              href="#" 
-              onClick={() => setIsOpen(false)}
-              className="text-base font-semibold text-color3 hover:text-color4 transition-colors py-1 border-b border-color3/5"
-            >
-              Tutors
-            </Link>
-            <Link 
-              href="#" 
-              onClick={() => setIsOpen(false)}
-              className="text-base font-semibold text-color3 hover:text-color4 transition-colors py-1"
-            >
-              About Us
-            </Link>
+            {navLinks.map((link, idx) => (
+              <Link 
+                key={link.name}
+                href={link.href} 
+                onClick={() => setIsOpen(false)}
+                className={`text-base font-semibold text-color3 hover:text-color4 transition-colors py-1 ${
+                  idx < navLinks.length - 1 ? "border-b border-color3/5" : ""
+                }`}
+              >
+                {link.name}
+              </Link>
+            ))}
           </div>
           
           <div className="flex flex-col gap-3 pt-4 border-t border-color3/10">

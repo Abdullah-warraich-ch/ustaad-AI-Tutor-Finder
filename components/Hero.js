@@ -2,24 +2,20 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Button from "@/components/Button";
+import { useRouter } from "next/navigation";
+import AIInput from "@/components/AIInput";
 
 export default function Hero() {
   const [aiPrompt, setAiPrompt] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
+  const router = useRouter();
 
-  const handleAISubmit = (e) => {
-    e.preventDefault();
-    if (!aiPrompt.trim()) return;
-    console.log("Asking AI:", aiPrompt);
-  };
-
-  const toggleMic = () => {
-    setIsRecording(!isRecording);
+  const handleAISubmit = (val) => {
+    if (!val.trim()) return;
+    router.push(`/ai?q=${encodeURIComponent(val)}`);
   };
 
   return (
-    <section className="relative w-full h-[80vh] flex items-center overflow-hidden bg-color1 text-color4 pt-20 pb-6 px-4 md:px-8 lg:px-16 transition-colors duration-300">
+    <section className="relative w-full min-h-[85vh] lg:h-[80vh] flex items-center overflow-hidden bg-color1 text-color4 pt-24 pb-12 px-4 md:px-8 lg:px-16 transition-colors duration-300">
       <div className="max-w-6xl mx-auto w-full flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
 
         {/* Left Side Content Column */}
@@ -33,42 +29,15 @@ export default function Hero() {
 
           {/* AI Search/Ask Input Bar */}
           <div id="ai-search" className="scroll-mt-28 max-w-xl w-full space-y-3">
-            <form
+            <AIInput
+              value={aiPrompt}
+              onChange={setAiPrompt}
               onSubmit={handleAISubmit}
-              className="relative flex items-center bg-white border border-color3/10 rounded-full p-1.5 focus-within:border-color2 focus-within:ring-2 focus-within:ring-color2/20 transition-all duration-300 shadow-sm"
-            >
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Ask AI to find the perfect tutor for you..."
-                className="w-full bg-transparent pl-5 pr-28 py-3 text-sm text-color3 placeholder-color3/45 outline-none font-medium"
-              />
-              <div className="absolute right-2 flex items-center gap-2">
-                {/* Microphone Icon Button */}
-                <button
-                  type="button"
-                  onClick={toggleMic}
-                  className={`p-2.5 rounded-full transition-all duration-200 ${isRecording
-                    ? "bg-red-50 text-red-500 animate-pulse scale-105"
-                    : "text-color3/50 hover:text-color4 hover:bg-color1"
-                    }`}
-                  title={isRecording ? "Stop Recording" : "Voice Search"}
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-                  </svg>
-                </button>
-                {/* Submit button */}
-                <Button
-                  type="submit"
-                  padding="px-5 py-2.5"
-                  textSize="text-xs"
-                >
-                  Ask
-                </Button>
-              </div>
-            </form>
+              placeholder="Ask AI to find the perfect tutor for you..."
+              submitButtonText="Ask"
+              mockFallbackText="Need a qualified Math tutor for Grade 8 near me"
+              className="w-full"
+            />
             <p className="text-xs text-color4/70 pl-4 font-medium">
               Describe what you want to learn, and our AI will match you with the perfect Ustaad tutors.
             </p>

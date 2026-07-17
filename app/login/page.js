@@ -18,7 +18,7 @@ export default function Login() {
     <div className="min-h-screen bg-color1 flex flex-col md:flex-row transition-all duration-300 font-sans">
       
       {/* Left Column (Brand & Info Showcase) - Uses Primary Color (color4) for background */}
-      <div className="w-full md:w-1/2 bg-color4 text-color1 relative overflow-hidden flex flex-col justify-between p-8 md:p-16 min-h-[350px] md:min-h-screen">
+      <div className="hidden md:flex w-full md:w-1/2 bg-color4 text-color1 relative overflow-hidden flex-col justify-between p-8 md:p-16 min-h-[350px] md:min-h-screen">
         
         {/* Geometric Background Shapes from public folder */}
         <div className="absolute inset-0 pointer-events-none opacity-15">
