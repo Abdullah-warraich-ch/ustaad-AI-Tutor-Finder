@@ -21,7 +21,7 @@ import { signUpUser } from "@/lib/firebase";
 
 export default function SignUpForm() {
   const router = useRouter();
-  const [role, setRole] = useState("student"); // "student" | "tutor"
+  const role = "tutor";
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -75,52 +75,14 @@ export default function SignUpForm() {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="max-w-md w-full mx-auto my-auto space-y-6"
     >
-      {/* Header & Modern Role Switcher */}
-      <div className="space-y-4 text-left">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-color4">
-            Create Account
-          </h2>
-        </div>
-
-        {/* Capsule Role Switcher Pill */}
-        <div className="grid grid-cols-2 gap-1 bg-color3/5 p-1 rounded-full border border-color3/15 relative">
-          <button
-            type="button"
-            onClick={() => setRole("student")}
-            className={`relative z-10 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-xs sm:text-sm font-semibold transition-colors duration-200 ${
-              role === "student" ? "text-white font-bold" : "text-color3/70 hover:text-color3"
-            }`}
-          >
-            <User className="w-4 h-4" />
-            Student / Parent
-            {role === "student" && (
-              <motion.div
-                layoutId="activeRoleCapsule"
-                className="absolute inset-0 bg-color4 rounded-full shadow-md shadow-color4/25 -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setRole("tutor")}
-            className={`relative z-10 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-xs sm:text-sm font-semibold transition-colors duration-200 ${
-              role === "tutor" ? "text-white font-bold" : "text-color3/70 hover:text-color3"
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            Tutor
-            {role === "tutor" && (
-              <motion.div
-                layoutId="activeRoleCapsule"
-                className="absolute inset-0 bg-color4 rounded-full shadow-md shadow-color4/25 -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-          </button>
-        </div>
+      {/* Header */}
+      <div className="space-y-1 text-left">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-color4">
+          Register as a Tutor
+        </h2>
+        <p className="text-xs sm:text-sm text-color3/60 font-medium">
+          Create your verified profile to connect with parents & students in Lahore.
+        </p>
       </div>
 
       {/* Error Alert Message */}

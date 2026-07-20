@@ -12,7 +12,7 @@ const STOPWORDS = new Set([
   "about", "monthly", "tuition", "work", "works", "system", "process", 
   "thanks", "thank", "ok", "okay", "cool", "great", "bye", "goodbye", 
   "level", "levels", "phase", "phases", "grade", "grades", "class", "classes",
-  "town", "lahore", "city"
+  "town", "lahore", "city", "from", "option", "options"
 ]);
 
 const GREETINGS_AND_GENERIC = [
@@ -33,8 +33,12 @@ function isSimpleGreetingOrFiller(text) {
 // Distinctive Lahore Area Keywords
 const KNOWN_AREA_KEYWORDS = [
   "wapda", "model", "gulberg", "dha", "johar", "faisal", "askari", 
-  "township", "cavalry", "garden", "allama", "iqbal", "valencia", "cantt"
+  "township", "cavalry", "garden", "allama", "iqbal", "valencia", "cantt",
+  "thokar", "niaz", "baig", "raiwind", "multan"
 ];
+
+const CHEAP_KEYWORDS = ["cheapest", "cheap", "lowest", "affordable", "budget", "low price", "low rate"];
+const HIGHEST_KEYWORDS = ["highest", "best", "top rated", "expensive"];
 
 function parseTokensAndAreas(text) {
   const clean = text.toLowerCase().replace(/[^\w\s]/gi, "");
@@ -46,7 +50,7 @@ function parseTokensAndAreas(text) {
   words.forEach((w) => {
     if (KNOWN_AREA_KEYWORDS.includes(w)) {
       areaTokens.push(w);
-    } else if (!STOPWORDS.has(w)) {
+    } else if (!STOPWORDS.has(w) && !CHEAP_KEYWORDS.includes(w) && !HIGHEST_KEYWORDS.includes(w)) {
       subjectTokens.push(w);
     }
   });
@@ -81,131 +85,180 @@ export async function POST(req) {
 
     let matchedTutors = [];
     let isAreaFallback = false;
+    let specificTutorDetails = "";
 
     if (!isGreetingOrFiller) {
-      // Extract tokens from current user message
-      const { subjectTokens: currentSubjects, areaTokens: currentAreas } = parseTokensAndAreas(cleanedText);
+      await connectDB();
 
-      let finalSubjectTokens = [...currentSubjects];
-      let finalAreaTokens = [...currentAreas];
+      // Check if user is asking for details about a specific tutor by name
+      const nameInquiryMatch = cleanedText.match(
+        /(?:qualification|degree|institution|experience|number|phone|contact|whatsapp|fee|charge|rate|details|about)\s+(?:of\s+)?([a-z]+)/i
+      ) || cleanedText.match(/([a-z]+)\s+(?:number|phone|contact|whatsapp|qualification|degree|fee|rate)/i);
 
-      // If current message has NO subject, look back at history for the most recent subject
-      if (finalSubjectTokens.length === 0 && Array.isArray(history)) {
-        for (let i = history.length - 1; i >= 0; i--) {
-          if (history[i].sender === "user" && history[i].text) {
-            const { subjectTokens: pastSubs } = parseTokensAndAreas(history[i].text);
-            if (pastSubs.length > 0) {
-              finalSubjectTokens = pastSubs;
-              break;
-            }
+      if (nameInquiryMatch) {
+        const targetName = nameInquiryMatch[1];
+        if (targetName && targetName.length > 2 && !STOPWORDS.has(targetName)) {
+          const tutor = await TutorProfile.findOne({
+            isActive: true,
+            fullName: { $regex: targetName, $options: "i" }
+          }).lean();
+
+          if (tutor) {
+            const quals = tutor.qualifications
+              ?.map((q) => `${q.degree} from ${q.institution} (${q.year || "N/A"})`)
+              .join(", ") || "Degrees listed on profile";
+
+            specificTutorDetails = `SPECIFIC TUTOR INQUIRY DATA FOR ${tutor.fullName}:
+- Name: ${tutor.fullName}
+- Phone/Contact: ${tutor.phone || "Available on detail page"}
+- Qualifications: ${quals}
+- Experience: ${tutor.experience || 3} years
+- Subjects: ${tutor.subjects?.join(", ")}
+- Areas: ${tutor.accessibleAreas?.join(", ")}
+- Monthly Rate: PKR ${tutor.monthlyRate ? tutor.monthlyRate.toLocaleString() : "Negotiable"}
+- Rating: ${tutor.rating || 4.8}★`;
+
+            matchedTutors = [tutor];
           }
         }
       }
 
-      // If current message has NO area, look back at history for the most recent area
-      if (finalAreaTokens.length === 0 && Array.isArray(history)) {
-        for (let i = history.length - 1; i >= 0; i--) {
-          if (history[i].sender === "user" && history[i].text) {
-            const { areaTokens: pastAreas } = parseTokensAndAreas(history[i].text);
-            if (pastAreas.length > 0) {
-              finalAreaTokens = pastAreas;
-              break;
+      // If NOT a specific name detail inquiry, perform progressive subject/area/sort search
+      if (!specificTutorDetails) {
+        // Extract tokens from current user message
+        const { subjectTokens: currentSubjects, areaTokens: currentAreas } = parseTokensAndAreas(cleanedText);
+
+        let finalSubjectTokens = [...currentSubjects];
+        let finalAreaTokens = [...currentAreas];
+
+        // Progressive Chat Context: look back at past user messages if subject or area is missing in current turn
+        if (finalSubjectTokens.length === 0 && Array.isArray(history)) {
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].sender === "user" && history[i].text) {
+              const { subjectTokens: pastSubs } = parseTokensAndAreas(history[i].text);
+              if (pastSubs.length > 0) {
+                finalSubjectTokens = pastSubs;
+                break;
+              }
             }
           }
         }
-      }
 
-      const allActiveTokens = [...new Set([...finalSubjectTokens, ...finalAreaTokens])];
+        if (finalAreaTokens.length === 0 && Array.isArray(history)) {
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].sender === "user" && history[i].text) {
+              const { areaTokens: pastAreas } = parseTokensAndAreas(history[i].text);
+              if (pastAreas.length > 0) {
+                finalAreaTokens = pastAreas;
+                break;
+              }
+            }
+          }
+        }
 
-      if (allActiveTokens.length > 0) {
-        try {
-          await connectDB();
+        // Check for sorting preference (cheapest / highest rated)
+        const isCheapSort = CHEAP_KEYWORDS.some((k) => cleanedText.includes(k));
+        const isHighestSort = HIGHEST_KEYWORDS.some((k) => cleanedText.includes(k));
 
-          let queryCondition = { isActive: true };
+        let sortOption = {};
+        if (isCheapSort) {
+          sortOption = { monthlyRate: 1 };
+        } else if (isHighestSort) {
+          sortOption = { rating: -1 };
+        }
 
-          // Strict AND logic when both Subject and Area are specified
-          if (finalSubjectTokens.length > 0 && finalAreaTokens.length > 0) {
-            const subjectRegex = finalSubjectTokens.join("|");
-            const areaRegex = finalAreaTokens.join("|");
+        const allActiveTokens = [...new Set([...finalSubjectTokens, ...finalAreaTokens])];
 
-            queryCondition.$and = [
-              {
+        if (allActiveTokens.length > 0 || isCheapSort || isHighestSort) {
+          try {
+            let queryCondition = { isActive: true };
+
+            // Strict AND logic when both Subject and Area are specified
+            if (finalSubjectTokens.length > 0 && finalAreaTokens.length > 0) {
+              const subjectRegex = finalSubjectTokens.join("|");
+              const areaRegex = finalAreaTokens.join("|");
+
+              queryCondition.$and = [
+                {
+                  $or: [
+                    { subjects: { $regex: subjectRegex, $options: "i" } },
+                    { educationLevel: { $regex: subjectRegex, $options: "i" } },
+                  ],
+                },
+                {
+                  accessibleAreas: { $regex: areaRegex, $options: "i" }
+                },
+              ];
+            } else if (finalSubjectTokens.length > 0) {
+              const subjectRegex = finalSubjectTokens.join("|");
+              queryCondition.$or = [
+                { subjects: { $regex: subjectRegex, $options: "i" } },
+                { educationLevel: { $regex: subjectRegex, $options: "i" } },
+              ];
+            } else if (finalAreaTokens.length > 0) {
+              const areaRegex = finalAreaTokens.join("|");
+              queryCondition.accessibleAreas = { $regex: areaRegex, $options: "i" };
+            }
+
+            let rawMatchedTutors = await TutorProfile.find(queryCondition)
+              .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone qualifications")
+              .sort(sortOption)
+              .limit(isCheapSort ? 1 : 4)
+              .lean();
+
+            // FALLBACK LOGIC: If an Area was specified but ZERO tutors matched that area
+            if (rawMatchedTutors.length === 0 && finalAreaTokens.length > 0 && finalSubjectTokens.length > 0) {
+              isAreaFallback = true;
+
+              // Search for tutors matching the SAME SUBJECT in nearby areas / online
+              const subjectRegex = finalSubjectTokens.join("|");
+              rawMatchedTutors = await TutorProfile.find({
+                isActive: true,
                 $or: [
                   { subjects: { $regex: subjectRegex, $options: "i" } },
                   { educationLevel: { $regex: subjectRegex, $options: "i" } },
-                ],
-              },
-              {
-                accessibleAreas: { $regex: areaRegex, $options: "i" }
-              },
-            ];
-          } else if (finalSubjectTokens.length > 0) {
-            const subjectRegex = finalSubjectTokens.join("|");
-            queryCondition.$or = [
-              { subjects: { $regex: subjectRegex, $options: "i" } },
-              { educationLevel: { $regex: subjectRegex, $options: "i" } },
-            ];
-          } else if (finalAreaTokens.length > 0) {
-            const areaRegex = finalAreaTokens.join("|");
-            queryCondition.accessibleAreas = { $regex: areaRegex, $options: "i" };
-          }
-
-          let rawMatchedTutors = await TutorProfile.find(queryCondition)
-            .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone")
-            .limit(4)
-            .lean();
-
-          // FALLBACK LOGIC: If an Area was specified but ZERO tutors matched that area
-          if (rawMatchedTutors.length === 0 && finalAreaTokens.length > 0 && finalSubjectTokens.length > 0) {
-            isAreaFallback = true;
-
-            // Search for tutors matching the SAME SUBJECT in nearby areas / online
-            const subjectRegex = finalSubjectTokens.join("|");
-            rawMatchedTutors = await TutorProfile.find({
-              isActive: true,
-              $or: [
-                { subjects: { $regex: subjectRegex, $options: "i" } },
-                { educationLevel: { $regex: subjectRegex, $options: "i" } },
-              ]
-            })
-              .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone")
-              .limit(3)
-              .lean();
-          }
-
-          // Re-order tutor's subjects & accessibleAreas so the user's searched subject & area appear FIRST on the card badge!
-          matchedTutors = rawMatchedTutors.map((t) => {
-            let updatedTutor = { ...t };
-
-            // Subject alignment
-            if (finalSubjectTokens.length > 0 && Array.isArray(t.subjects)) {
-              const matchedSub = t.subjects.find((sub) =>
-                finalSubjectTokens.some((st) => sub.toLowerCase().includes(st))
-              );
-              if (matchedSub) {
-                const otherSubs = t.subjects.filter((s) => s !== matchedSub);
-                updatedTutor.subjects = [matchedSub, ...otherSubs];
-                updatedTutor.displaySubject = matchedSub;
-              }
+                ]
+              })
+                .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone qualifications")
+                .sort(sortOption)
+                .limit(3)
+                .lean();
             }
 
-            // Area alignment
-            if (finalAreaTokens.length > 0 && Array.isArray(t.accessibleAreas)) {
-              const matchedArea = t.accessibleAreas.find((area) =>
-                finalAreaTokens.some((at) => area.toLowerCase().includes(at))
-              );
-              if (matchedArea) {
-                const otherAreas = t.accessibleAreas.filter((a) => a !== matchedArea);
-                updatedTutor.accessibleAreas = [matchedArea, ...otherAreas];
-                updatedTutor.displayArea = matchedArea;
+            // Re-order tutor's subjects & accessibleAreas so the user's searched subject & area appear FIRST on the card badge!
+            matchedTutors = rawMatchedTutors.map((t) => {
+              let updatedTutor = { ...t };
+
+              // Subject alignment
+              if (finalSubjectTokens.length > 0 && Array.isArray(t.subjects)) {
+                const matchedSub = t.subjects.find((sub) =>
+                  finalSubjectTokens.some((st) => sub.toLowerCase().includes(st))
+                );
+                if (matchedSub) {
+                  const otherSubs = t.subjects.filter((s) => s !== matchedSub);
+                  updatedTutor.subjects = [matchedSub, ...otherSubs];
+                  updatedTutor.displaySubject = matchedSub;
+                }
               }
-            }
 
-            return updatedTutor;
-          });
+              // Area alignment
+              if (finalAreaTokens.length > 0 && Array.isArray(t.accessibleAreas)) {
+                const matchedArea = t.accessibleAreas.find((area) =>
+                  finalAreaTokens.some((at) => area.toLowerCase().includes(at))
+                );
+                if (matchedArea) {
+                  const otherAreas = t.accessibleAreas.filter((a) => a !== matchedArea);
+                  updatedTutor.accessibleAreas = [matchedArea, ...otherAreas];
+                  updatedTutor.displayArea = matchedArea;
+                }
+              }
 
-        } catch (dbErr) {
-          console.warn("MongoDB fetch warning in AI chat:", dbErr.message);
+              return updatedTutor;
+            });
+
+          } catch (dbErr) {
+            console.warn("MongoDB fetch warning in AI chat:", dbErr.message);
+          }
         }
       }
     }
@@ -219,11 +272,14 @@ export async function POST(req) {
     const tutorContext = matchedTutors.length > 0
       ? `AVAILABLE MATCHED TUTORS IN LAHORE:
 ${tutorContextNote}
+${specificTutorDetails}
 ${matchedTutors
   .map(
     (t) => `Tutor:
 Name: ${t.fullName}
 ID: ${t._id}
+Phone: ${t.phone || "Available on detail page"}
+Qualifications: ${t.qualifications?.map((q) => `${q.degree} (${q.institution})`).join(", ") || "Verified"}
 Subjects: ${t.subjects?.join(", ") || "General"}
 Areas: ${t.accessibleAreas?.join(", ") || "Lahore"}
 Monthly Rate: ${t.monthlyRate ? `PKR ${t.monthlyRate.toLocaleString()}` : "Negotiable"}
@@ -235,17 +291,25 @@ Mode: ${t.teachingMode || "Both"}`
       : "NO MATCHED TUTORS FOUND IN DATABASE FOR THIS SPECIFIC QUERY.";
 
     const systemPrompt = `ROLE
-You are Ustaad AI Tutor Assistant, an intelligent and helpful assistant dedicated to helping users find, understand, and book private home and online tutors in Lahore, Pakistan.
+You are Ustaad AI Finder, an intelligent and helpful assistant dedicated to helping users find, understand, and book private home and online tutors in Lahore, Pakistan.
 
-CAPABILITIES & RESPONDING FREELY
-1. INTELLECTUAL FREEDOM: You can answer general questions about private tutoring in Lahore, subject advice (Math, Physics, Chemistry, CS, Biology, O/A Levels, Matric, FSc), home vs online tuition, typical monthly fees, and how Ustaad works. If no specific tutors match in the database, respond conversationally and intelligently in your own voice!
-2. AREA FALLBACK RULE: If the prompt indicates that zero tutors were found in their requested area (e.g. isAreaFallback), apologize politely for not having home tutors available in that specific neighborhood right now, and suggest the alternative tutors provided below who teach the same subject online or in nearby areas of Lahore.
-3. CARD DISPLAY RULE: When specific tutors ARE provided under AVAILABLE MATCHED TUTORS IN LAHORE, introduce them briefly and mention that their interactive cards are displayed below. If NO tutors are provided under AVAILABLE MATCHED TUTORS IN LAHORE, answer the user's question directly without inventing any tutors or claiming cards are below.
-4. CITY COVERAGE: Verified home tutors are currently available in **Lahore, Pakistan**. If asked about other cities (e.g. Karachi, Islamabad), explain politely that in-person tutors are in Lahore, but online tutors are available.
-5. REJECT ONLY NON-TUTORING TOPICS: Only decline if the request is completely UNRELATED to tutoring/education (e.g. cooking recipes, writing computer code, sports trivia, politics). For non-tutoring topics, say:
-"I am **Ustaad AI Assistant**, dedicated exclusively to helping you with private home and online tutoring in Lahore. Please ask me any questions about finding tutors, subjects, or tutoring rates!"
-6. DO NOT WRITE BULLET LISTS OF TUTORS: Interactive Teacher Cards will automatically be displayed by the UI below your text message. Do not write text bullet lists of tutors.
-7. HALLUCINATION PREVENTION: Never invent fake tutor names or IDs. Only reference tutor names provided in the context below.
+CAPABILITIES & CONVERSATIONAL FEATURES
+1. PROGRESSIVE FILTERING & PRICE SORTING:
+- Users can progressively narrow down tutor searches (e.g. asking for "Biology teachers", then "from Thokar", then "cheapest option").
+- If the user asks for the "cheapest option" or "lowest price", highlight the tutor with the lowest monthly fee from the matched cards below and state their rate clearly!
+2. SPECIFIC TUTOR INQUIRIES:
+- If the user asks for specific details about a tutor by name (e.g. "What is the qualification of Ali?", "I want Shahzaib's phone number", "How much does Hamdan charge?"), use the data under SPECIFIC TUTOR INQUIRY DATA / AVAILABLE MATCHED TUTORS to answer their question directly and accurately!
+3. AREA FALLBACK RULE:
+- If the prompt indicates that zero tutors were found in their requested area (e.g. isAreaFallback), apologize politely for not having home tutors available in that specific neighborhood right now, and suggest the alternative tutors provided below who teach the same subject online or in nearby areas of Lahore.
+4. CARD DISPLAY RULE:
+- Interactive Teacher Cards will automatically be displayed by the application UI below your text message. Do not write text bullet lists of tutors. Introduce the matched tutor or answer the inquiry directly!
+5. CITY COVERAGE:
+- Verified home tutors are currently available in **Lahore, Pakistan**. If asked about other cities (e.g. Karachi, Islamabad), explain politely that in-person tutors are in Lahore, but online tutors are available.
+6. NO RAW ASTERISKS & CLEAN TEXT:
+- Use bold formatting (**like this**) for key details such as **Tutor Names**, **Subjects**, **Rates**, and **Locations**.
+- Do NOT use raw asterisks \`*\` for bullet points. Write in smooth, continuous natural sentences organized into clean paragraphs!
+7. HALLUCINATION PREVENTION:
+- Never invent fake tutor names, phone numbers, or qualifications. Only reference data provided in the context below.
 
 ${tutorContext}`;
 

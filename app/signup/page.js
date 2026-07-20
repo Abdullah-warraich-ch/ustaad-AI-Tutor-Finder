@@ -35,10 +35,10 @@ export default function SignUp() {
         {/* Middle text */}
         <div className="relative z-10 my-auto space-y-3">
           <h1 className="text-xl lg:text-2xl font-semibold tracking-tight leading-snug max-w-xs">
-            Find certified in-person home tutors near you.
+            Join Ustaad as a Verified Home & Online Tutor.
           </h1>
           <p className="text-color1/80 text-xs lg:text-sm max-w-xs font-light leading-relaxed">
-            Join Ustaad to instantly match with top-rated verified tutors.
+            Create your teaching profile to connect with parents and students looking for quality private tutors in Lahore.
           </p>
         </div>
 
