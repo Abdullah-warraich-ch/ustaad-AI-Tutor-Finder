@@ -2,7 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, Building, Calendar, Plus, Trash2, Save, CheckCircle2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { 
+  GraduationCap, 
+  Building, 
+  Calendar, 
+  Plus, 
+  Trash2, 
+  Save, 
+  CheckCircle2, 
+  Pencil, 
+  X,
+  Award 
+} from "lucide-react";
 
 const EMPTY_QUAL = { degree: "", institution: "", year: "" };
 
@@ -84,6 +96,7 @@ function QualCard({ qual, index, onChange, onRemove }) {
 }
 
 export default function QualificationsForm({ profile, onSave }) {
+  const [isEditing, setIsEditing] = useState(false);
   const [qualifications, setQualifications] = useState([{ ...EMPTY_QUAL }]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -136,8 +149,11 @@ export default function QualificationsForm({ profile, onSave }) {
 
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
     } else {
       setSaved(true);
+      toast.success("Qualifications saved successfully!");
+      setIsEditing(false);
       setTimeout(() => setSaved(false), 3000);
     }
   };
@@ -148,64 +164,136 @@ export default function QualificationsForm({ profile, onSave }) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-7 shadow-xs"
     >
-      <div className="mb-6">
-        <h2 className="text-slate-900 font-bold text-lg">Qualifications</h2>
-        <p className="text-slate-500 text-sm mt-0.5">
-          Add your degrees and certifications to build student trust
-        </p>
-      </div>
+      {/* Header with Edit Button */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+        <div>
+          <h2 className="text-slate-900 font-bold text-lg">Qualifications</h2>
+          <p className="text-slate-500 text-sm mt-0.5">
+            Add your degrees and certifications to build student trust
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <AnimatePresence>
-          {qualifications.map((qual, i) => (
-            <QualCard
-              key={i}
-              qual={qual}
-              index={i}
-              onChange={handleChange}
-              onRemove={removeQual}
-            />
-          ))}
-        </AnimatePresence>
-
-        {/* Add Button */}
         <button
           type="button"
-          onClick={addQual}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 hover:border-slate-300 transition-all text-sm font-semibold shadow-2xs"
+          onClick={() => setIsEditing(!isEditing)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            isEditing
+              ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              : "bg-[#FF4D00] text-white hover:bg-[#e04400] shadow-sm shadow-[#FF4D00]/20"
+          }`}
         >
-          <Plus className="w-4 h-4 text-[#FF4D00]" />
-          Add Another Qualification
+          {isEditing ? (
+            <>
+              <X className="w-4 h-4" /> Cancel
+            </>
+          ) : (
+            <>
+              <Pencil className="w-3.5 h-3.5" /> Edit Qualifications
+            </>
+          )}
         </button>
+      </div>
 
-        {/* Error */}
-        {error && (
-          <p className="text-red-700 text-xs font-semibold bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
-            {error}
-          </p>
-        )}
-
-        {/* Submit */}
-        <div className="pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 bg-[#FF4D00] text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-[#e04400] hover:shadow-md hover:shadow-[#FF4D00]/20 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {saved ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                Saved!
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                {saving ? "Saving…" : "Save Qualifications"}
-              </>
-            )}
-          </button>
+      {!isEditing ? (
+        /* Read-Only Display Mode */
+        <div>
+          {profile?.qualifications?.length > 0 ? (
+            <div className="space-y-3">
+              {profile.qualifications.map((q, i) => (
+                <div 
+                  key={i} 
+                  className="flex items-start gap-4 p-4 bg-slate-50/80 border border-slate-100 rounded-2xl"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#FF4D00] flex items-center justify-center flex-shrink-0 border border-orange-200/60">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-900 font-bold text-sm sm:text-base">
+                      {q.degree || "Degree Title"}
+                    </p>
+                    <p className="text-slate-500 text-xs sm:text-sm font-medium mt-0.5">
+                      {q.institution || "Institution"}
+                      {q.year ? ` · Class of ${q.year}` : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-slate-50/60 border border-slate-100 rounded-2xl space-y-2">
+              <GraduationCap className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-slate-500 text-sm font-medium">No qualifications added yet.</p>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="text-[#FF4D00] text-xs font-bold hover:underline"
+              >
+                + Add your first qualification
+              </button>
+            </div>
+          )}
         </div>
-      </form>
+      ) : (
+        /* Editable Form Mode */
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <AnimatePresence>
+            {qualifications.map((qual, i) => (
+              <QualCard
+                key={i}
+                qual={qual}
+                index={i}
+                onChange={handleChange}
+                onRemove={removeQual}
+              />
+            ))}
+          </AnimatePresence>
+
+          {/* Add Button */}
+          <button
+            type="button"
+            onClick={addQual}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 hover:border-slate-300 transition-all text-sm font-semibold shadow-2xs"
+          >
+            <Plus className="w-4 h-4 text-[#FF4D00]" />
+            Add Another Qualification
+          </button>
+
+          {/* Error */}
+          {error && (
+            <p className="text-red-700 text-xs font-semibold bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+              {error}
+            </p>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 bg-[#FF4D00] text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-[#e04400] hover:shadow-md hover:shadow-[#FF4D00]/20 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {saved ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  {saving ? "Saving…" : "Save Qualifications"}
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="px-5 py-3 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 font-semibold text-sm transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </motion.div>
   );
 }
