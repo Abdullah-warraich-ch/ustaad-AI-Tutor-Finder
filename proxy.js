@@ -8,8 +8,8 @@ export function proxy(request) {
   const token = request.cookies.get("session")?.value || request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  // Protected routes check
-  const isProtectedRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/tutor");
+  // Protected routes check: only dashboard sub-routes require login
+  const isProtectedRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/tutor/dashboard");
 
   if (isProtectedRoute && !token) {
     const loginUrl = new URL("/login", request.url);
@@ -26,6 +26,6 @@ export const middleware = proxy;
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/tutor/:path*",
+    "/tutor/dashboard/:path*",
   ],
 };
