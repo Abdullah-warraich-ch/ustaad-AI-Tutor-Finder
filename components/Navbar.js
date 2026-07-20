@@ -64,7 +64,7 @@ export default function Navbar() {
             Sign in
           </Link>
           {/* Reusable Button - uses defaults (bg-color4, text-color1, no transform on hover) */}
-          <Button href="/login">
+          <Button href="/signup">
             Sign up
           </Button>
         </div>
@@ -116,7 +116,7 @@ export default function Navbar() {
             </Link>
             {/* Mobile Signup Button using Reusable Button */}
             <Button 
-              href="/login" 
+              href="/signup" 
               onClick={() => setIsOpen(false)}
               textSize="text-base"
               padding="py-3"
