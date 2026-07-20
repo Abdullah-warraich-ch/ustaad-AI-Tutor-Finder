@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F5F5F5; /* Top: default background */
-  --foreground: #303841; /* Text color */
-  --primary: #FF5722;    /* Bottom: primary color */
-  --secondary: #76ABAE;  /* Secondary accent */
-  --color-1: #F5F5F5;    /* Top */
-  --color-2: #76ABAE;    /* Second */
-  --color-3: #303841;    /* Third */
-  --color-4: #FF5722;    /* Bottom */
+  --background: #F8FAFC; /* Clean luminous canvas */
+  --foreground: #0F172A; /* Deep midnight obsidian text */
+  --primary: #FF4D00;    /* Electric Flame Coral Orange */
+  --secondary: #00C8FF;  /* Vivid Neon Aqua Cyan */
+  --color-1: #F8FAFC;    /* Clean background canvas */
+  --color-2: #00C8FF;    /* Secondary neon cyan accent */
+  --color-3: #0F172A;    /* Third deep midnight slate */
+  --color-4: #FF4D00;    /* Bottom primary electric coral */
 }
 
 @theme inline {
@@ -26,8 +26,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #303841;
-    --foreground: #F5F5F5;
+    --background: #0F172A;
+    --foreground: #F8FAFC;
   }
 }
 
