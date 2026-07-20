@@ -95,10 +95,10 @@ export default function Hero() {
             {/* Colored background circle behind main image */}
             <div className="absolute inset-0 bg-color2 rounded-full transform -translate-x-2.5 translate-y-2.5"></div>
 
-            {/* Image container - Swapped to images.jpeg */}
+            {/* Image container - Swapped to main.jpg */}
             <div className="w-full h-full rounded-full border-6 border-white overflow-hidden relative shadow-lg">
               <img
-                src="/images/images.jpeg"
+                src="/images/main.jpg"
                 className="w-full h-full object-cover"
                 alt="Student studying"
               />
