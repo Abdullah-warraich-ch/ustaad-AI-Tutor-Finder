@@ -45,7 +45,7 @@ export default function TutorSubjectCard({ subjectName, tutor, index }) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
     >
-      <Link href={`/tutor/${tutorId}`} className="block flex-1">
+      <Link href={`/tutor/${tutorId}?from=tutor`} className="block flex-1">
         {/* Gradient Subject Header */}
         <div className={`bg-gradient-to-r ${gradient} p-4 text-white flex items-center justify-between gap-3`}>
           <div>
@@ -137,7 +137,7 @@ export default function TutorSubjectCard({ subjectName, tutor, index }) {
         </div>
 
         <Link
-          href={`/tutor/${tutorId}`}
+          href={`/tutor/${tutorId}?from=tutor`}
           className="flex items-center gap-1.5 bg-slate-900 text-white font-medium text-xs px-3.5 py-2.5 rounded-xl hover:bg-[#FF4D00] transition-colors shadow-xs"
         >
           View Details

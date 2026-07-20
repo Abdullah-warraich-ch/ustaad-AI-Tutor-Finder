@@ -74,7 +74,7 @@ export default function TinyTutorCard({ tutor }) {
         </div>
 
         <Link
-          href={`/tutor/${tutorId}`}
+          href={`/tutor/${tutorId}?from=ai`}
           className="flex items-center gap-1 bg-slate-900 text-white font-medium text-[10px] px-2.5 py-1.5 rounded-lg hover:bg-[#FF4D00] transition-colors"
         >
           Profile
