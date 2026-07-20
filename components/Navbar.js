@@ -9,7 +9,7 @@ import Button from "@/components/Button";
 const navLinks = [
   { name: "Home", href: "/", icon: Home },
   { name: "AI Finder", href: "/ai", icon: Bot },
-  { name: "Tutors", href: "#", icon: GraduationCap },
+  { name: "Tutors", href: "/tutor", icon: GraduationCap },
   { name: "About Us", href: "/about", icon: Info },
 ];
 
@@ -31,22 +31,22 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="w-full fixed top-0 left-0 right-0 z-50 px-4 pt-4">
-        {/* Floating Rounded Navbar Container */}
-        <div className="max-w-5xl mx-auto bg-white/80 backdrop-blur-md border border-color3/10 rounded-full px-6 py-2.5 flex items-center justify-between shadow-xs transition-all duration-300">
-          
+      {/* Permanent Typical Full-Width Fixed Header */}
+      <header className="w-full fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-1 group">
-            <span className="text-lg font-bold tracking-tight uppercase text-color4 group-hover:text-color3 transition-colors duration-300">
+            <span className="text-xl font-bold tracking-tight uppercase text-color4 group-hover:text-color3 transition-colors duration-300">
               Ustaad
             </span>
-            <span className="text-lg font-black text-color3 group-hover:text-color4 transition-colors duration-300">
+            <span className="text-xl font-black text-color3 group-hover:text-color4 transition-colors duration-300">
               .
             </span>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <div 
+          <div
             className="hidden md:flex items-center gap-8"
             onMouseLeave={() => setHoveredIndex(null)}
           >
@@ -71,8 +71,8 @@ export default function Navbar() {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-sm font-semibold text-color3 hover:text-color4 transition-colors"
             >
               Sign in
@@ -84,8 +84,8 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden">
-            <button 
-              onClick={() => setIsOpen(true)} 
+            <button
+              onClick={() => setIsOpen(true)}
               className="text-color3 hover:text-color4 transition-colors p-1.5 rounded-lg hover:bg-slate-100"
               aria-label="Open navigation menu"
             >
@@ -93,13 +93,13 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Mobile Drawer Appearing from Left */}
+      {/* Mobile Drawer Appearing from Right */}
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 md:hidden flex">
-            
+
             {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -179,7 +179,6 @@ export default function Navbar() {
                 </Link>
               </div>
             </motion.div>
-
           </div>
         )}
       </AnimatePresence>

@@ -3,21 +3,21 @@ import { connectDB } from "@/lib/mongodb";
 import { TutorProfile } from "@/models/TutorProfile";
 
 const STOPWORDS = new Set([
-  "need", "want", "find", "looking", "lookingfor", "search", "show", "give", 
-  "best", "good", "private", "home", "online", "teacher", "tutor", "teachers", 
-  "tutors", "academy", "please", "can", "you", "me", "my", "a", "an", "the", 
-  "in", "on", "at", "for", "with", "is", "are", "i", "sir", "madam", "hi", 
-  "hello", "hey", "rate", "rates", "cost", "fee", "fees", "average", "price", 
-  "prices", "what", "how", "much", "many", "does", "do", "tell", "explain", 
-  "about", "monthly", "tuition", "work", "works", "system", "process", 
-  "thanks", "thank", "ok", "okay", "cool", "great", "bye", "goodbye", 
+  "need", "want", "find", "looking", "lookingfor", "search", "show", "give",
+  "best", "good", "private", "home", "online", "teacher", "tutor", "teachers",
+  "tutors", "academy", "please", "can", "you", "me", "my", "a", "an", "the",
+  "in", "on", "at", "for", "with", "is", "are", "i", "sir", "madam", "hi",
+  "hello", "hey", "rate", "rates", "cost", "fee", "fees", "average", "price",
+  "prices", "what", "how", "much", "many", "does", "do", "tell", "explain",
+  "about", "monthly", "tuition", "work", "works", "system", "process",
+  "thanks", "thank", "ok", "okay", "cool", "great", "bye", "goodbye",
   "level", "levels", "phase", "phases", "grade", "grades", "class", "classes",
   "town", "lahore", "city", "from", "option", "options"
 ]);
 
 const GREETINGS_AND_GENERIC = [
-  "hi", "hello", "hey", "salam", "assalam", "aoa", "good morning", 
-  "good evening", "good afternoon", "who are you", "what can you do", 
+  "hi", "hello", "hey", "salam", "assalam", "aoa", "good morning",
+  "good evening", "good afternoon", "who are you", "what can you do",
   "help", "test", "demo", "thanks", "thank you", "ok", "okay", "bye"
 ];
 
@@ -32,7 +32,7 @@ function isSimpleGreetingOrFiller(text) {
 
 // Distinctive Lahore Area Keywords
 const KNOWN_AREA_KEYWORDS = [
-  "wapda", "model", "gulberg", "dha", "johar", "faisal", "askari", 
+  "wapda", "model", "gulberg", "dha", "johar", "faisal", "askari",
   "township", "cavalry", "garden", "allama", "iqbal", "valencia", "cantt",
   "thokar", "niaz", "baig", "raiwind", "multan"
 ];
@@ -274,8 +274,8 @@ export async function POST(req) {
 ${tutorContextNote}
 ${specificTutorDetails}
 ${matchedTutors
-  .map(
-    (t) => `Tutor:
+        .map(
+          (t) => `Tutor:
 Name: ${t.fullName}
 ID: ${t._id}
 Phone: ${t.phone || "Available on detail page"}
@@ -286,8 +286,8 @@ Monthly Rate: ${t.monthlyRate ? `PKR ${t.monthlyRate.toLocaleString()}` : "Negot
 Rating: ${t.rating || 4.8}★
 Experience: ${t.experience || 3} years
 Mode: ${t.teachingMode || "Both"}`
-  )
-  .join("\n\n")}`
+        )
+        .join("\n\n")}`
       : "NO MATCHED TUTORS FOUND IN DATABASE FOR THIS SPECIFIC QUERY.";
 
     const systemPrompt = `ROLE
