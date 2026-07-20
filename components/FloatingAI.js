@@ -2,15 +2,70 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
-import { MessageCircle, X, Bot } from "lucide-react";
+import { MessageCircle, X, Bot, User, Sparkles } from "lucide-react";
 import AIInput from "@/components/AIInput";
+import TinyTutorCard from "@/components/tutor/TinyTutorCard";
+
+function renderFormattedText(text = "") {
+  if (!text) return null;
+
+  const paragraphs = text.split(/\n\n+/);
+
+  return (
+    <div className="space-y-2">
+      {paragraphs.map((paragraph, pIdx) => {
+        const lines = paragraph.split(/\n/);
+
+        return (
+          <div key={pIdx} className="leading-relaxed">
+            {lines.map((rawLine, lIdx) => {
+              let line = rawLine;
+              let isBullet = false;
+              if (/^[\*\-]\s+/.test(line)) {
+                line = line.replace(/^[\*\-]\s+/, "");
+                isBullet = true;
+              }
+
+              const parts = line.split(/(\*\*.*?\*\*)/g);
+
+              const formattedLine = parts.map((part, partIdx) => {
+                if (part.startsWith("**") && part.endsWith("**")) {
+                  return (
+                    <strong key={partIdx} className="font-semibold text-slate-900">
+                      {part.slice(2, -2)}
+                    </strong>
+                  );
+                }
+                return part;
+              });
+
+              return (
+                <React.Fragment key={lIdx}>
+                  {isBullet ? (
+                    <div className="flex items-start gap-2 my-1 pl-1">
+                      <span className="text-[#FF4D00] font-bold select-none">•</span>
+                      <div>{formattedLine}</div>
+                    </div>
+                  ) : (
+                    <span>{formattedLine}</span>
+                  )}
+                  {!isBullet && lIdx < lines.length - 1 && <br />}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function FloatingAI() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       sender: "ai",
-      text: "Hello! I am Ustaad AI. Tell me what subject or grade you need, and I'll match you with the perfect in-person home tutor!"
+      text: "Welcome to **Ustaad AI Finder**! I am trained to match you with verified home & online tutors in Lahore. Tell me your subject, grade level, or neighborhood."
     }
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -20,26 +75,23 @@ export default function FloatingAI() {
   const { scrollY } = useScroll();
   const [isVisible, setIsVisible] = useState(false);
 
-  // High-performance scroll listener using Framer Motion
   useMotionValueEvent(scrollY, "change", (latest) => {
-    const threshold = window.innerHeight * 0.5;
+    const threshold = window.innerHeight * 0.4;
     if (latest > threshold) {
       setIsVisible(true);
     } else {
       setIsVisible(false);
-      setIsOpen(false); // Close chat modal when scrolling back up
+      setIsOpen(false);
     }
   });
 
-  // Initial load check for scroll position
   useEffect(() => {
-    const threshold = window.innerHeight * 0.5;
+    const threshold = window.innerHeight * 0.4;
     if (scrollY.get() > threshold) {
       setIsVisible(true);
     }
   }, [scrollY]);
 
-  // Auto-scroll messages to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -68,7 +120,10 @@ export default function FloatingAI() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({
+          message: text,
+          history: messages
+        })
       });
 
       if (!response.ok) {
@@ -77,9 +132,16 @@ export default function FloatingAI() {
 
       const data = await response.json();
       setIsTyping(false);
-      setMessages((prev) => [...prev, { sender: "ai", text: data.reply }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: data.reply,
+          matchedTutors: data.matchedTutors || []
+        }
+      ]);
     } catch (error) {
-      console.error("Floating AI matchmaker error:", error);
+      console.error("Floating AI error:", error);
       setIsTyping(false);
       setMessages((prev) => [
         ...prev,
@@ -103,16 +165,15 @@ export default function FloatingAI() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-6 right-6 z-50 select-none flex items-center justify-center"
           >
-            {/* Radar Wave rings - active when chat is closed */}
             {!isOpen && (
               <>
-                <div className="absolute w-14 h-14 md:w-16 md:h-16 rounded-full bg-color4/40 animate-ping pointer-events-none"></div>
-                <div className="absolute w-14 h-14 md:w-16 md:h-16 rounded-full bg-color4/20 animate-ping pointer-events-none [animation-delay:0.5s]"></div>
+                <div className="absolute w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FF4D00]/30 animate-ping pointer-events-none"></div>
+                <div className="absolute w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FF4D00]/15 animate-ping pointer-events-none [animation-delay:0.5s]"></div>
               </>
             )}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="relative z-10 flex items-center justify-center bg-color4 text-color1 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg hover:bg-color4/90 transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
+              className="relative z-10 flex items-center justify-center bg-[#FF4D00] text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-xl hover:bg-[#e04400] transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none"
               aria-label="Ask AI Assistant"
             >
               {isOpen ? (
@@ -125,62 +186,100 @@ export default function FloatingAI() {
         )}
       </AnimatePresence>
 
-      {/* Chat Window Modal */}
+      {/* Chat Window Modal - Matched exactly to /ai */}
       <AnimatePresence>
         {isOpen && isVisible && (
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[380px] h-[500px] bg-white border border-color3/5 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden select-none"
+            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[420px] h-[540px] bg-slate-50 border border-slate-200/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden select-none"
           >
             {/* Header */}
-            <div className="bg-color3 text-color1 p-5 flex items-center justify-between">
+            <div className="bg-slate-900 text-white p-4 px-5 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-color2/20 flex items-center justify-center text-color2">
-                  <Bot className="w-6 h-6" />
+                <div className="w-9 h-9 rounded-full bg-[#FF4D00]/20 text-[#FF4D00] flex items-center justify-center border border-[#FF4D00]/30">
+                  <Bot className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <h3 className="text-sm font-semibold tracking-tight">Ustaad AI Assistant</h3>
+                  <h3 className="text-xs sm:text-sm font-semibold tracking-tight text-white">Ustaad AI Assistant</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 block animate-pulse"></span>
-                    <span className="text-[10px] text-color1/50 font-medium">Online Matcher</span>
+                    <span className="text-[10px] text-slate-300 font-medium">Lahore Tutor Matcher</span>
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-color1/60 hover:text-color1 transition-colors p-1"
+                className="text-slate-400 hover:text-white transition-colors p-1"
                 aria-label="Close chat"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-color1/30 no-scrollbar text-left">
+            {/* Messages Area - Exactly like /ai */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 select-text">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex gap-2.5 ${
+                    msg.sender === "user" ? "justify-end text-right" : "justify-start text-left"
+                  }`}
                 >
-                  <div className={`max-w-[80%] rounded-[1.5rem] px-4 py-3 text-sm font-medium leading-relaxed ${msg.sender === "user"
-                      ? "bg-color4 text-color1 rounded-tr-none"
-                      : "bg-white border border-color3/5 text-color3 rounded-tl-none shadow-sm"
-                    }`}>
-                    {msg.text}
+                  {/* AI Avatar */}
+                  {msg.sender === "ai" && (
+                    <div className="w-7 h-7 rounded-full bg-orange-100 text-[#FF4D00] flex items-center justify-center flex-shrink-0 mt-0.5 select-none">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                  )}
+
+                  <div className="max-w-[85%] space-y-2">
+                    <div
+                      className={`rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
+                        msg.sender === "user"
+                          ? "bg-[#FF4D00] text-white rounded-tr-none shadow-2xs font-semibold"
+                          : "bg-white border border-slate-200/90 text-slate-800 rounded-tl-none shadow-2xs font-normal"
+                      }`}
+                    >
+                      {renderFormattedText(msg.text)}
+                    </div>
+
+                    {/* Matched Tiny Tutor Cards inside AI Response */}
+                    {msg.sender === "ai" && msg.matchedTutors?.length > 0 && (
+                      <div className="pt-1 select-none">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                          Matched Tutors ({msg.matchedTutors.length}):
+                        </p>
+                        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+                          {msg.matchedTutors.map((tutor) => (
+                            <TinyTutorCard key={tutor._id || tutor.firebaseUid} tutor={tutor} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* User Avatar */}
+                  {msg.sender === "user" && (
+                    <div className="w-7 h-7 rounded-full bg-orange-100 text-[#FF4D00] flex items-center justify-center flex-shrink-0 mt-0.5 select-none">
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
               ))}
 
               {/* Typing indicator */}
               {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white border border-color3/5 text-color3 rounded-[1.5rem] rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-color3/40 animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-color3/40 animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-color3/40 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                <div className="flex gap-2.5 justify-start text-left">
+                  <div className="w-7 h-7 rounded-full bg-orange-100 text-[#FF4D00] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="bg-white border border-slate-200/90 text-slate-800 rounded-2xl rounded-tl-none px-4 py-3 shadow-2xs flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D00] animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D00] animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D00] animate-bounce" style={{ animationDelay: "300ms" }}></span>
                   </div>
                 </div>
               )}
@@ -188,7 +287,7 @@ export default function FloatingAI() {
             </div>
 
             {/* Input area */}
-            <div className="p-3 border-t border-color3/5 bg-white">
+            <div className="p-3 border-t border-slate-200/80 bg-white">
               <AIInput
                 value={inputValue}
                 onChange={setInputValue}
