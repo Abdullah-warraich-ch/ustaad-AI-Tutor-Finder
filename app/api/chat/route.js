@@ -58,6 +58,80 @@ function parseTokensAndAreas(text) {
   return { subjectTokens, areaTokens };
 }
 
+const NOISE_WORDS = new Set([
+  "who", "is", "are", "was", "were", "tell", "me", "about", "details", "detail",
+  "info", "information", "profile", "show", "find", "search", "looking", "for",
+  "do", "you", "have", "any", "tutor", "tutors", "teacher", "teachers", "sir",
+  "madam", "mr", "mrs", "miss", "dr", "prof", "professor", "a", "an", "the",
+  "can", "could", "would", "please", "give", "get", "contact", "phone", "number",
+  "qualification", "qualifications", "degree", "fee", "fees", "rate", "rates",
+  "cost", "price", "experience", "available", "availability", "etc", "what",
+  "which", "how", "much", "many", "there", "know", "hello", "hi", "hey", "of", "in",
+  "on", "at", "to", "with", "from", "and", "or", "yes", "no"
+]);
+
+/**
+ * Searches MongoDB TutorProfile for tutors matching candidate name tokens in user text.
+ */
+async function searchTutorsByName(cleanedText) {
+  const rawWords = cleanedText
+    .replace(/'s\b/gi, "")
+    .replace(/[^\w\s]/gi, "")
+    .split(/\s+/);
+
+  const candidateTokens = rawWords.filter(
+    (w) => w.length >= 2 && !NOISE_WORDS.has(w)
+  );
+
+  if (candidateTokens.length === 0) return { tutors: [], searchedName: "" };
+
+  const searchedName = candidateTokens.join(" ");
+
+  // 1. Strict AND match: Tutor fullName must contain ALL candidate tokens
+  const andQuery = {
+    isActive: true,
+    $and: candidateTokens.map((token) => ({
+      fullName: { $regex: token, $options: "i" },
+    })),
+  };
+
+  let tutors = await TutorProfile.find(andQuery)
+    .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone qualifications bio totalReviews availability timeSlots")
+    .lean();
+
+  // 2. Regex phrase match if multi-word name
+  if (tutors.length === 0 && candidateTokens.length > 1) {
+    const phrase = candidateTokens.join(".*");
+    tutors = await TutorProfile.find({
+      isActive: true,
+      fullName: { $regex: phrase, $options: "i" },
+    })
+      .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone qualifications bio totalReviews availability timeSlots")
+      .lean();
+  }
+
+  // 3. Fallback: single-token match if 1-2 tokens provided (and not area/subject)
+  if (tutors.length === 0 && candidateTokens.length <= 2) {
+    const skipFallback = candidateTokens.some(
+      (t) => KNOWN_AREA_KEYWORDS.includes(t) || STOPWORDS.has(t)
+    );
+
+    if (!skipFallback) {
+      tutors = await TutorProfile.find({
+        isActive: true,
+        $or: candidateTokens.map((token) => ({
+          fullName: { $regex: token, $options: "i" },
+        })),
+      })
+        .select("_id fullName subjects accessibleAreas monthlyRate rating experience teachingMode profilePhoto educationLevel gender phone qualifications bio totalReviews availability timeSlots")
+        .limit(4)
+        .lean();
+    }
+  }
+
+  return { tutors, searchedName };
+}
+
 export async function POST(req) {
   try {
     const { message, history = [] } = await req.json();
@@ -90,37 +164,37 @@ export async function POST(req) {
     if (!isGreetingOrFiller) {
       await connectDB();
 
-      // Check if user is asking for details about a specific tutor by name
-      const nameInquiryMatch = cleanedText.match(
-        /(?:qualification|degree|institution|experience|number|phone|contact|whatsapp|fee|charge|rate|details|about)\s+(?:of\s+)?([a-z]+)/i
-      ) || cleanedText.match(/([a-z]+)\s+(?:number|phone|contact|whatsapp|qualification|degree|fee|rate)/i);
+      // Check if user is asking for or searching a specific tutor by name
+      const { tutors: nameMatchedTutors, searchedName } = await searchTutorsByName(cleanedText);
 
-      if (nameInquiryMatch) {
-        const targetName = nameInquiryMatch[1];
-        if (targetName && targetName.length > 2 && !STOPWORDS.has(targetName)) {
-          const tutor = await TutorProfile.findOne({
-            isActive: true,
-            fullName: { $regex: targetName, $options: "i" }
-          }).lean();
+      const isExplicitNameInquiry = /^(who\s+is|who's|whos|tell\s+me\s+about|about|details\s+of|info\s+on|do\s+you\s+have|is\s+there\s+any\s+tutor|is\s+.*\s+available|show\s+profile|profile\s+of|search\s+for|find\s+tutor)/i.test(cleanedText) || cleanedText.includes("'s");
 
-          if (tutor) {
-            const quals = tutor.qualifications
-              ?.map((q) => `${q.degree} from ${q.institution} (${q.year || "N/A"})`)
-              .join(", ") || "Degrees listed on profile";
+      if (nameMatchedTutors.length > 0) {
+        matchedTutors = nameMatchedTutors;
 
-            specificTutorDetails = `SPECIFIC TUTOR INQUIRY DATA FOR ${tutor.fullName}:
-- Name: ${tutor.fullName}
-- Phone/Contact: ${tutor.phone || "Available on detail page"}
+        const tutorDetailsList = nameMatchedTutors.map((tutor) => {
+          const quals = tutor.qualifications
+            ?.map((q) => `${q.degree || "Degree"} from ${q.institution || "University"} (${q.year || "N/A"})`)
+            .join("; ") || "Verified degree on profile";
+          const areas = tutor.accessibleAreas?.join(", ") || "Lahore";
+          const subjects = tutor.subjects?.join(", ") || "General Studies";
+
+          return `SPECIFIC TUTOR MATCH FOUND IN DATABASE:
+- Full Name: ${tutor.fullName}
+- Contact / Phone: ${tutor.phone || "Available on profile page"}
 - Qualifications: ${quals}
-- Experience: ${tutor.experience || 3} years
-- Subjects: ${tutor.subjects?.join(", ")}
-- Areas: ${tutor.accessibleAreas?.join(", ")}
-- Monthly Rate: PKR ${tutor.monthlyRate ? tutor.monthlyRate.toLocaleString() : "Negotiable"}
-- Rating: ${tutor.rating || 4.8}★`;
+- Experience: ${tutor.experience || 3} years of teaching
+- Subjects Taught: ${subjects}
+- Areas Covered: ${areas}
+- Monthly Rate: ${tutor.monthlyRate ? `PKR ${tutor.monthlyRate.toLocaleString()}` : "Negotiable"}
+- Rating: ${tutor.rating || 4.8}★ (${tutor.totalReviews || 0} reviews)
+- Teaching Mode: ${tutor.teachingMode || "Both home and online"}
+- Bio: ${tutor.bio || "Verified professional tutor in Lahore."}`;
+        });
 
-            matchedTutors = [tutor];
-          }
-        }
+        specificTutorDetails = tutorDetailsList.join("\n\n");
+      } else if (isExplicitNameInquiry && searchedName) {
+        specificTutorDetails = `SPECIFIC TUTOR NAME INQUIRY: User searched for tutor named "${searchedName}", but NO tutor with this exact name exists in our database.`;
       }
 
       // If NOT a specific name detail inquiry, perform progressive subject/area/sort search
@@ -269,10 +343,12 @@ export async function POST(req) {
       tutorContextNote = `NOTE TO ASSISTANT: Zero tutors were found directly in the requested neighborhood. However, we retrieved fallback tutors in Lahore for the requested subject below. You MUST apologize to the user that no in-person tutors are currently available in their specific area, and introduce these recommended subject tutors in nearby areas or online!`;
     }
 
-    const tutorContext = matchedTutors.length > 0
-      ? `AVAILABLE MATCHED TUTORS IN LAHORE:
+    const tutorContext = `DATABASE CONTEXT & INQUIRY SEARCH DATA:
+${specificTutorDetails ? specificTutorDetails : ""}
 ${tutorContextNote}
-${specificTutorDetails}
+${
+  matchedTutors.length > 0
+    ? `AVAILABLE MATCHED TUTORS IN LAHORE:
 ${matchedTutors
         .map(
           (t) => `Tutor:
@@ -283,12 +359,13 @@ Qualifications: ${t.qualifications?.map((q) => `${q.degree} (${q.institution})`)
 Subjects: ${t.subjects?.join(", ") || "General"}
 Areas: ${t.accessibleAreas?.join(", ") || "Lahore"}
 Monthly Rate: ${t.monthlyRate ? `PKR ${t.monthlyRate.toLocaleString()}` : "Negotiable"}
-Rating: ${t.rating || 4.8}★
+Rating: ${t.rating || 4.8}★ (${t.totalReviews || 0} reviews)
 Experience: ${t.experience || 3} years
 Mode: ${t.teachingMode || "Both"}`
         )
         .join("\n\n")}`
-      : "NO MATCHED TUTORS FOUND IN DATABASE FOR THIS SPECIFIC QUERY.";
+    : "NO MATCHED TUTOR CARDS IN DATABASE FOR THIS SPECIFIC QUERY."
+}`;
 
     const systemPrompt = `ROLE
 You are Ustaad AI Finder, an intelligent and helpful assistant dedicated to helping users find, understand, and book private home and online tutors in Lahore, Pakistan.
@@ -297,12 +374,15 @@ CAPABILITIES & CONVERSATIONAL FEATURES
 1. PROGRESSIVE FILTERING & PRICE SORTING:
 - Users can progressively narrow down tutor searches (e.g. asking for "Biology teachers", then "from Thokar", then "cheapest option").
 - If the user asks for the "cheapest option" or "lowest price", highlight the tutor with the lowest monthly fee from the matched cards below and state their rate clearly!
-2. SPECIFIC TUTOR INQUIRIES:
-- If the user asks for specific details about a tutor by name (e.g. "What is the qualification of Ali?", "I want Shahzaib's phone number", "How much does Hamdan charge?"), use the data under SPECIFIC TUTOR INQUIRY DATA / AVAILABLE MATCHED TUTORS to answer their question directly and accurately!
+2. SPECIFIC TUTOR INQUIRIES & NAME SEARCH:
+- If the user asks about a tutor by name (e.g. "Who is Bakar Butt?", "Tell me about Bakar", "What is Bakar Butt's qualification?", "Is Bakar Butt available?", "Show me Ali's number"):
+  - Look under DATABASE CONTEXT & INQUIRY SEARCH DATA.
+  - If a tutor match is found in the database, respond warmly and describe that tutor's profile in clean, natural text (highlighting their **Full Name**, **Qualifications**, **Subjects**, **Experience**, **Monthly Rate**, **Rating**, and **Covered Areas** using bold formatting). Inform the user that their interactive card is displayed below!
+  - If the database indicates no tutor by that name was found, politely state that no registered tutor with that name was found in our Lahore database, and offer to help them find top tutors for a specific subject or area instead.
 3. AREA FALLBACK RULE:
 - If the prompt indicates that zero tutors were found in their requested area (e.g. isAreaFallback), apologize politely for not having home tutors available in that specific neighborhood right now, and suggest the alternative tutors provided below who teach the same subject online or in nearby areas of Lahore.
 4. CARD DISPLAY RULE:
-- Interactive Teacher Cards will automatically be displayed by the application UI below your text message. Do not write text bullet lists of tutors. Introduce the matched tutor or answer the inquiry directly!
+- Interactive Teacher Cards will automatically be displayed by the application UI below your text message whenever matched tutors exist. Do not write text bullet lists of tutors. Introduce the matched tutor or answer the inquiry directly!
 5. CITY COVERAGE:
 - Verified home tutors are currently available in **Lahore, Pakistan**. If asked about other cities (e.g. Karachi, Islamabad), explain politely that in-person tutors are in Lahore, but online tutors are available.
 6. NO RAW ASTERISKS & CLEAN TEXT:

@@ -176,26 +176,29 @@ async function seedDatabase() {
         ? getRandomElement(FEMALE_FIRST_NAMES)
         : getRandomElement(MALE_FIRST_NAMES);
       const lastName = getRandomElement(LAST_NAMES);
-      const fullName = `${firstName} ${lastName}`;
-      const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@ustaad-mock.pk`;
-      const phone = `+92 3${getRandomInt(0, 4)}${getRandomInt(0, 9)} ${getRandomInt(1000000, 9999999)}`;
+      const isBakar = i === 1;
+      const fullName = isBakar ? "Bakar Butt" : `${firstName} ${lastName}`;
+      const email = `${fullName.toLowerCase().replace(/\s+/g, ".")}@ustaad-mock.pk`;
+      const phone = `+92 300 8492019`;
       
-      const subjects = getRandomElement(SUBJECT_COMBOS);
-      const accessibleAreas = getRandomElements(LAHORE_AREAS, getRandomInt(2, 5));
-      const university = getRandomElement(UNIVERSITIES);
-      const degree = getRandomElement(DEGREES);
-      const gradYear = getRandomInt(2015, 2024);
-      const expYears = Math.min(2026 - gradYear + getRandomInt(0, 2), 15);
-      const teachingMode = getRandomElement(["online", "in-person", "both"]);
-      const edLevel = getRandomElement(["secondary", "college", "university", "all"]);
-      const monthlyRate = Math.round(getRandomInt(12000, 45000) / 1000) * 1000;
+      const subjects = isBakar ? ["Computer Science", "Web Development", "Python", "Mathematics"] : getRandomElement(SUBJECT_COMBOS);
+      const accessibleAreas = isBakar ? ["Gulberg III", "Johar Town", "Model Town", "DHA Phase 5"] : getRandomElements(LAHORE_AREAS, getRandomInt(2, 5));
+      const university = isBakar ? "FAST NUCES Lahore" : getRandomElement(UNIVERSITIES);
+      const degree = isBakar ? "BS Computer Science" : getRandomElement(DEGREES);
+      const gradYear = isBakar ? 2021 : getRandomInt(2015, 2024);
+      const expYears = isBakar ? 5 : Math.min(2026 - gradYear + getRandomInt(0, 2), 15);
+      const teachingMode = isBakar ? "both" : getRandomElement(["online", "in-person", "both"]);
+      const edLevel = isBakar ? "all" : getRandomElement(["secondary", "college", "university", "all"]);
+      const monthlyRate = isBakar ? 28000 : Math.round(getRandomInt(12000, 45000) / 1000) * 1000;
       
-      const rating = getRandomFloat(4.3, 5.0);
-      const totalStudents = getRandomInt(8, 55);
-      const totalSessions = getRandomInt(25, 280);
-      const totalReviews = getRandomInt(4, 42);
+      const rating = isBakar ? 4.9 : getRandomFloat(4.3, 5.0);
+      const totalStudents = isBakar ? 42 : getRandomInt(8, 55);
+      const totalSessions = isBakar ? 195 : getRandomInt(25, 280);
+      const totalReviews = isBakar ? 38 : getRandomInt(4, 42);
 
-      const bio = `Dedicated ${subjects[0]} tutor in Lahore with over ${expYears} years of teaching experience. Graduated from ${university} with a degree in ${degree}. Passionate about building strong fundamental concepts, exam preparation (O/A Levels, Matric, FSc, entry tests), and helping students excel academically with personalized lesson plans.`;
+      const bio = isBakar
+        ? "Senior Computer Science & Mathematics Tutor in Lahore with 5+ years of experience teaching O/A Levels, Matric, FSC, and Web Development. Graduated from FAST NUCES Lahore."
+        : `Dedicated ${subjects[0]} tutor in Lahore with over ${expYears} years of teaching experience. Graduated from ${university} with a degree in ${degree}. Passionate about building strong fundamental concepts, exam preparation (O/A Levels, Matric, FSc, entry tests), and helping students excel academically with personalized lesson plans.`;
 
       mockTutors.push({
         firebaseUid: `mock_tutor_lahore_${i}`,
