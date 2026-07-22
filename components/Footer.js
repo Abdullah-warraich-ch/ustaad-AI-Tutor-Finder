@@ -14,8 +14,8 @@ export default function Footer() {
           {/* Logo & Description */}
           <div className="space-y-4 text-left">
             <Link href="/" className="inline-block text-2xl font-bold tracking-tight">
-              <span className="text-color4">ustaad</span>
-              <span className="text-color2">.</span>
+              <span className="text-color1">ustaad</span>
+              <span className="text-color4">.</span>
             </Link>
             <p className="text-sm text-color1/60 leading-relaxed font-medium">
               Elite AI-assisted matchmaking for local in-person home tutoring services. We connect you with certified teachers for personalized, real-world learning.

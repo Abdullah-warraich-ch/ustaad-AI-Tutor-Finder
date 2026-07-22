@@ -29,7 +29,7 @@ export default function Login() {
         {/* Logo Section */}
         <div className="relative z-10 flex items-center gap-1">
           <Link href="/" className="text-xl font-black tracking-tight uppercase">Ustaad</Link>
-          <span className="text-xl font-black text-color2">.</span>
+          <span className="text-xl font-black text-color4">.</span>
         </div>
 
         {/* Middle text */}
