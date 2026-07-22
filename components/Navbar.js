@@ -37,10 +37,10 @@ export default function Navbar() {
 
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-1 group">
-            <span className="text-xl font-bold tracking-tight uppercase text-color4 group-hover:text-color3 transition-colors duration-300">
+            <span className="text-xl font-bold tracking-tight uppercase text-color3 group-hover:text-color4 transition-colors duration-300">
               Ustaad
             </span>
-            <span className="text-xl font-black text-color3 group-hover:text-color4 transition-colors duration-300">
+            <span className="text-xl font-black text-color4 group-hover:text-color3 transition-colors duration-300">
               .
             </span>
           </Link>
@@ -122,10 +122,10 @@ export default function Navbar() {
                 {/* Header with Logo and Close Button */}
                 <div className="flex items-center justify-between pb-6 border-b border-slate-100">
                   <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center gap-1">
-                    <span className="text-xl font-bold tracking-tight uppercase text-color4">
+                    <span className="text-xl font-bold tracking-tight uppercase text-color3">
                       Ustaad
                     </span>
-                    <span className="text-xl font-black text-color3">.</span>
+                    <span className="text-xl font-black text-color4">.</span>
                   </Link>
                   <button
                     onClick={() => setIsOpen(false)}
